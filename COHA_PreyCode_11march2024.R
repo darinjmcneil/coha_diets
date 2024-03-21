@@ -1,12 +1,11 @@
 library(sp); library(raster); library(rgeos); library(geosphere)
 
-# testing 123
-
 # read in files
-coha_all <- read.csv("C:/Users/User/Desktop/COHA_code/COHA_RawData.csv")
-prey_table <- read.csv("C:/Users/User/Desktop/COHA_code/PreyWeightTable_21jan2024.csv")
-prey_table <- prey_table[ ,c(1,3,4,6)] # subset to get columns 1, 3, 4, and 6
+coha_all <- read.csv("./COHA_RawData.csv") # read in COHA raw data from working directory
+prey_table <- read.csv("./PreyWeightTable_21jan2024.csv") # read in COHA prey weights from working directory
+prey_table <- prey_table[ ,c(1,3,4,6)] # subset to get columns 1, 3, 4, and 6 (prey ID, min/max weight, and avian size class)
 
+# merge coha_all with prey table to add all weights to identified prey
 coha_all2 <- merge(x = coha_all, y = prey_table, by.x = "prey_desc", by.y = "prey_desc", all.x = TRUE)
 
 # remove records that have no prey
@@ -215,12 +214,14 @@ for(b in 1:nrow(MysteryLarges)){
 # weight can be calculated
 # NOTE about mammals: I don't think we can have pseudo-mammals b/c we don't have
 # mammal size classes (e.g., small mammal, medium mammal)
+# So, in other words, mammalian prey stays IN this analysis, but ONLY mammals
+# that we identified to species; a random, unidentified mammal is not used.
 
-coha_all3 <- subset(coha_all2, prey_desc != "small avian" &
+coha_all3 <- subset(coha_all2, prey_desc != "small avian" & # this subsets coha_all2 but REMOVES unidentified BIRDS
                                prey_desc != "medium avian" &
                                prey_desc != "large avian")
-coha_all3$min_weight <- as.numeric(coha_all3$min_weight)
-coha_all3$max_weight <- as.numeric(coha_all3$max_weight)
+coha_all3$min_weight <- as.numeric(coha_all3$min_weight) # making this numeric
+coha_all3$max_weight <- as.numeric(coha_all3$max_weight) # making this numeric
 coha_all3 <- subset(coha_all3, max_weight < 5400) # remove deer, raccoon, opossum, and cat this way
 hist(coha_all3$min_weight)
 
@@ -248,15 +249,14 @@ for(i in 1:nrow(coha_all3)){
   coha_all3[i,] <- prey_i # add column with new weight back to original data.frame
   print(paste0("row ", i, " done. Prey ", prey_i$prey_desc, " assigned weight of ", samp, " g"))
 }
-c1 <- subset(coha_all3, weight < 200)
-hist(c1$weight)
+c1 <- subset(coha_all3, weight < 500) # object "c1" is just for the histogram on the next line
+hist(c1$weight) # histogram
 
 ############################## Code that runs across the country and samples random birds!
 
-library(raster)
 # download shapefile from ESRI
 #https://hub.arcgis.com/datasets/1b02c87f62d24508970dc1a6df80c98e/explore?location=38.753686%2C-99.481986%2C3.89
-us <- raster::shapefile("C:/Users/User/Desktop/COHA_code/States_shapefile.shp")
+us <- raster::shapefile("./States_shapefile.shp")
 us <- us[us$State_Code != 'AK' & us$State_Code != 'HI',] # remove AK and HI
 plot(us)
 crs(us)
@@ -284,7 +284,7 @@ height <- 5000
 # create spatial object of all COHA observations
 Locs <- SpatialPoints(coords = data.frame("x" = coha_all3$longitude, "y" = coha_all3$latitude, "row" = coha_all3$row)) # create spatial object
 crs(Locs) <- CRS("+init=epsg:4269") # define CRS as NAD83
-Locs <- spTransform(Locs, crs(us1)) # reproject to match USA raster
+Locs <- spTransform(Locs, crs(us1)) # reproject to match USA (or Ohio) raster
 plot(us1, axes = T); plot(Locs, add = T, col = "red")
 
 # blank data frame to hold records
@@ -314,7 +314,7 @@ for(x in seq(xwest, xeast, by = 10000)){ # for each value of xwest, by 10km chun
     SelectedPrey <- subset(coha_all3, row == sampledRowNumber)
     ifelse(nrow(SelectedPrey) == 1, 
            print(paste0("prey item found: ",SelectedPrey$prey_desc)),1+1)
-    #Sys.sleep(0.05)
+    Sys.sleep(0.05)
     RandomPreySample <- rbind(RandomPreySample, SelectedPrey)
     }
 }
