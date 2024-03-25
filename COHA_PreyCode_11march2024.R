@@ -272,12 +272,12 @@ crs(oh) # identify CRS
 plot(oh, axes = T) # plot
 
 # plotting squares
-library(sf); library(ggplot2)
+library(sf); library(ggplot2); library(tictoc)
 
-xwest <- oh@bbox[1,1] # use oh@bbox[1,1] for ohio runthrough
-xeast <- oh@bbox[1,2]
-ynorth <- oh@bbox[2,2]
-ysouth <- oh@bbox[2,1]
+xwest <- us1@bbox[1,1] # use oh@bbox[1,1] for ohio runthrough; use us1@bbox[1,1] for USA runthrough
+xeast <- us1@bbox[1,2]
+ynorth <- us1@bbox[2,2]
+ysouth <- us1@bbox[2,1]
 width <- 5000
 height <- 5000
 
@@ -289,6 +289,8 @@ plot(us1, axes = T); plot(Locs, add = T, col = "red")
 
 # blank data frame to hold records
 RandomPreySample <- coha_all3[0,] # blank table that resembles coha_all3 without data
+
+tic()
 
 # for() loop that cycles through all Cooper's Hawk observations and extracts random ones
 for(x in seq(xwest, xeast, by = 10000)){ # for each value of xwest, by 10km chunks
@@ -302,9 +304,10 @@ for(x in seq(xwest, xeast, by = 10000)){ # for each value of xwest, by 10km chun
           c(y + height, y + height, y - height, y - height, y + height))
         )
       )
-    plot(poly, xlim =(c(xwest, xeast)),  ylim= (c(ysouth, ynorth)), axes = T, border = "red")
-    plot(oh, add = T)
-    plot(Locs, add = T, col = "blue")
+    #plot(poly, xlim =(c(xwest, xeast)),  ylim= (c(ysouth, ynorth)), axes = T, border = "red")
+    #plot(oh, add = T)
+    #plot(Locs, add = T, col = "blue")
+    # Note - these plots are a real time-suck in the for() loop
     
     # extract points from the moving window polygon
     prey_table2 <- data.frame(Locs@coords)
@@ -314,10 +317,27 @@ for(x in seq(xwest, xeast, by = 10000)){ # for each value of xwest, by 10km chun
     SelectedPrey <- subset(coha_all3, row == sampledRowNumber)
     ifelse(nrow(SelectedPrey) == 1, 
            print(paste0("prey item found: ",SelectedPrey$prey_desc)),1+1)
-    Sys.sleep(0.05)
+    #Sys.sleep(0.05)
     RandomPreySample <- rbind(RandomPreySample, SelectedPrey)
     }
 }
+
+toc()
+
+#RandomPreySample1 <- RandomPreySample
+#RandomPreySample2 <- RandomPreySample
+#RandomPreySample3 <- RandomPreySample
+
+
+c1 <- subset(RandomPreySample1, weight < 500) # object "c1" is just for the histogram on the next line
+hist(c1$weight, prob = TRUE) # histogram
+lines(density(c1$weight), # density plot
+      lwd = 2, # thickness of line
+      col = "chocolate3")
+lines(density(RandomPreySample3$weight), # density plot
+      lwd = 2, # thickness of line
+      col = "chocolate3")
+
 
 ################################
 ################################
