@@ -263,7 +263,7 @@ height <- 5000
 # create blank list to hold resulting data.frames
 list1 <- list()
 
-for(i in 1:3){
+for(i in 1:50){
   #######################################################################
   # i = 33
   
