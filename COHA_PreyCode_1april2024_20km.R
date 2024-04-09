@@ -2,38 +2,36 @@ library(sp); library(raster); library(rgeos); library(geosphere)
 library(sf); library(ggplot2); library(tictoc)
 
 # read in files
-ssha_all <- read.csv("./SSHA_RawData.csv") # read in SSHA raw data from working directory
-prey_table <- read.csv("./SSHA_PreyWeightTable_8april2024.csv") # read in COHA prey weights from working directory
+coha_all <- read.csv("./COHA_RawData.csv") # read in COHA raw data from working directory
+prey_table <- read.csv("./PreyWeightTable_21jan2024.csv") # read in COHA prey weights from working directory
 prey_table <- prey_table[ ,c(1,3,4,6)] # subset to get columns 1, 3, 4, and 6 (prey ID, min/max weight, and avian size class)
 
 # merge coha_all with prey table to add all weights to identified prey
-ssha_all2 <- merge(x = ssha_all, y = prey_table, by.x = "prey_desc", by.y = "item", all.x = TRUE)
+coha_all2 <- merge(x = coha_all, y = prey_table, by.x = "prey_desc", by.y = "prey_desc", all.x = TRUE)
 
 # remove records that have no prey
-ssha_all2 <- subset(ssha_all2, prey_desc != "")
+coha_all2 <- subset(coha_all2, prey_desc != "no_prey")
 
 # remove unidentified prey
-ssha_all2 <- subset(ssha_all2, prey_desc != "?")
-ssha_all2 <- subset(ssha_all2, prey_desc != "remove")
+coha_all2 <- subset(coha_all2, prey_desc != "?")
+coha_all2 <- subset(coha_all2, prey_desc != "remove")
 
 # remove unidentified avian
-ssha_all2 <- subset(ssha_all2, prey_desc != "avian")
+coha_all2 <- subset(coha_all2, prey_desc != "avian")
 
-# remove records that lack coordinates
-ssha_all2 <- ssha_all2[!(is.na(ssha_all2$latitude)), ]
-ssha_all2 <- subset(ssha_all2, latitude > 25) # remove tropical records
-ssha_all2 <- subset(ssha_all2, latitude < 50) # remove arctic records
+# remove unidentified mammalian
+coha_all2 <- subset(coha_all2, prey_desc != "mammalian")
 
-# add rownumber to ssha_all2
-ssha_all2 <- cbind("row" = seq(1, nrow(ssha_all2)), ssha_all2)
+# add rownumber to coha_all2
+coha_all2 <- cbind("row" = seq(1, nrow(coha_all2)), coha_all2)
 
 ##########################################################
 ########################################################## "Small avian" replacement
 ##########################################################
 
 ### Assign random species to each "small prey"
-MysterySmalls <- subset(ssha_all2, prey_desc == "small avian") # all unidentified small birds subsetted
-smallBirds <- subset(ssha_all2, avian.size.class == "Small") # all identified small birds
+MysterySmalls <- subset(coha_all2, prey_desc == "small avian") # all unidentified small birds subsetted
+smallBirds <- subset(coha_all2, avian_size_class == "Small") # all identified small birds
 
 # https://hub.arcgis.com/datasets/1b02c87f62d24508970dc1a6df80c98e/explore?location=38.753686%2C-99.481986%2C3.89
 # https://stackoverflow.com/questions/21977720/r-finding-closest-neighboring-point-and-number-of-neighbors-within-a-given-rad
@@ -97,8 +95,8 @@ for(b in 1:nrow(MysterySmalls)){
 ##########################################################
 
 ### Assign random species to each "medium prey"
-MysteryMediums <- subset(ssha_all2, prey_desc == "medium avian") # all unidentified medium birds subsetted
-mediumBirds <- subset(ssha_all2, avian.size.class == "Medium") # all identified medium birds
+MysteryMediums <- subset(coha_all2, prey_desc == "medium avian") # all unidentified medium birds subsetted
+mediumBirds <- subset(coha_all2, avian_size_class == "Medium") # all identified medium birds
 
 ################################################################################
 
@@ -155,8 +153,8 @@ for(b in 1:nrow(MysteryMediums)){
 ##########################################################
 
 ### Assign random species to each "large prey"
-MysteryLarges <- subset(ssha_all2, prey_desc == "large avian") # all unidentified large birds subsetted
-largeBirds <- subset(ssha_all2, avian.size.class == "Large") # all identified large birds
+MysteryLarges <- subset(coha_all2, prey_desc == "large avian") # all unidentified large birds subsetted
+largeBirds <- subset(coha_all2, avian_size_class == "Large") # all identified large birds
 
 ################################################################################
 
@@ -220,21 +218,18 @@ for(b in 1:nrow(MysteryLarges)){
 # So, in other words, mammalian prey stays IN this analysis, but ONLY mammals
 # that we identified to species; a random, unidentified mammal is not used.
 
-ssha_all3 <- subset(ssha_all2, prey_desc != "small avian" & # this subsets ssha_all2 but REMOVES unidentified BIRDS
+coha_all3 <- subset(coha_all2, prey_desc != "small avian" & # this subsets coha_all2 but REMOVES unidentified BIRDS
                                prey_desc != "medium avian" &
                                prey_desc != "large avian")
-ssha_all3$min.weight..g. <- as.numeric(ssha_all3$min.weight..g.) # making this numeric
-ssha_all3$max.weight..g. <- as.numeric(ssha_all3$max.weight..g.) # making this numeric
-ssha_all3 <- subset(ssha_all3, max.weight..g. < 5400) # remove deer, raccoon, opossum, and cat this way
-hist(ssha_all3$min.weight..g., breaks = 100)
+coha_all3$min_weight <- as.numeric(coha_all3$min_weight) # making this numeric
+coha_all3$max_weight <- as.numeric(coha_all3$max_weight) # making this numeric
+coha_all3 <- subset(coha_all3, max_weight < 5400) # remove deer, raccoon, opossum, and cat this way
+hist(coha_all3$min_weight)
 
 # bind everything back together
-ssha_all3 <- rbind(ssha_all3, MysterySmallsUpd, MysteryMediumsUpd, MysteryLargesUpd)
-ssha_all3$min_weight <- as.numeric(ssha_all3$min.weight..g.) # making this numeric
-ssha_all3$max_weight <- as.numeric(ssha_all3$max.weight..g.) # making this numeric
-
-# remove extra weight columns
-ssha_all3 <- dplyr::select(ssha_all3, -min.weight..g., -max.weight..g.)
+coha_all3 <- rbind(coha_all3, MysterySmallsUpd, MysteryMediumsUpd, MysteryLargesUpd)
+coha_all3$min_weight <- as.numeric(coha_all3$min_weight)
+coha_all3$max_weight <- as.numeric(coha_all3$max_weight)
 
 ############################## Read in shapefiles and create spatial objects
 
@@ -274,29 +269,29 @@ for(i in 1:50){
   
   #######################################################################
   # assign weights to all prey items in random fashion
-  ssha_all3$weight <- 0  # blank column to hold randomly assigned prey weights
-  for(j in 1:nrow(ssha_all3)){
+  coha_all3$weight <- 0  # blank column to hold randomly assigned prey weights
+  for(j in 1:nrow(coha_all3)){
     # j = 1
-    prey_j <- ssha_all3[j,]
+    prey_j <- coha_all3[j,]
     low1 <- prey_j$min_weight # lower bound of prey distribution
     high1 <- prey_j$max_weight # upper bound of prey distribution
     mean1 <- mean(c(low1, high1)) # mean is the midpoint
     samp <- round(rnorm(n = 1, mean = mean1, sd = (high1-mean1)/2),0) # sample one point, round
     samp <- ifelse(samp < 0, mean1, samp)
     prey_j$weight <- samp # add new random weight to prey
-    ssha_all3[j,] <- prey_j # add column with new weight back to original data.frame
+    coha_all3[j,] <- prey_j # add column with new weight back to original data.frame
     #print(paste0("row ", j, " done. Prey ", prey_j$prey_desc, " assigned weight of ", samp, " g"))
   }
   print(paste0("replicate ", i, " prey weights randomly assigned 👍"))
   
   #######################################################################
-  # create spatial object of all ssha observations
-  Locs <- SpatialPoints(coords = data.frame("x" = ssha_all3$longitude, "y" = ssha_all3$latitude, "row" = ssha_all3$row)) # create spatial object
+  # create spatial object of all COHA observations
+  Locs <- SpatialPoints(coords = data.frame("x" = coha_all3$longitude, "y" = coha_all3$latitude, "row" = coha_all3$row)) # create spatial object
   crs(Locs) <- CRS("+init=epsg:4269") # define CRS as NAD83
   Locs <- spTransform(Locs, crs(us1)) # reproject to match USA (or Ohio) raster
   
   # blank data frame to hold records
-  RandomPreySample <- ssha_all3[0,] # blank table that resembles ssha_all3 without data
+  RandomPreySample <- coha_all3[0,] # blank table that resembles coha_all3 without data
   
   # for() loop that cycles through all Cooper's Hawk observations and extracts random ones
   for(x in seq(xwest, xeast, by = 20000)){ # for each value of xwest, by 10km chunks
@@ -315,7 +310,7 @@ for(i in 1:50){
       prey_table2 <- subset(prey_table2, x < max(poly[[1]][,1]) & x > min(poly[[1]][,1]))
       prey_table2 <- subset(prey_table2, y < max(poly[[1]][,2]) & y > min(poly[[1]][,2]))
       sampledRowNumber <- prey_table2[sample(1:nrow(prey_table2), size = 1),3]
-      SelectedPrey <- subset(ssha_all3, row == sampledRowNumber)
+      SelectedPrey <- subset(coha_all3, row == sampledRowNumber)
       RandomPreySample <- rbind(RandomPreySample, SelectedPrey)
     }
   }
@@ -326,8 +321,8 @@ for(i in 1:50){
   list1[[i]] <- RandomPreySample
 }
 
-plot(-1,-1, ylim = c(0, 0.015), xlim = c(0,500), xlab = "Prey Weight", ylab = "Probability",
-     main = "Sharp-shinned Hawk Prey Weights")
+plot(-1,-1, ylim = c(0, 0.005), xlim = c(0,500), xlab = "Prey Weight", ylab = "Probability",
+     main = "Cooper's Hawk Prey Weights")
 
 for(i in 1:length(list1)){
   RandomPreySample_i <- list1[[i]]
@@ -335,7 +330,6 @@ for(i in 1:length(list1)){
   lines(density(c1$weight), lwd = 1, col = "black") # density plot line
 }
 rug(c1$weigh, col = "red")
-
 
 # run a single line with a rug at the bottom
 plot(-1,-1, ylim = c(0, 0.005), xlim = c(0,500), xlab = "Prey Weight", ylab = "Probability")
