@@ -2,7 +2,7 @@ library(tidyverse) #loads program for later use
 
 #########################################################################
 
-COHA.prey = read.csv("COHA_preyweights (3).csv") #pulls in COHA Prey Weights
+COHA.prey = read.csv("homework_preyweights.csv") #pulls in COHA Prey Weights
 COHA.prey = na.omit(COHA.prey) #omits rows with nothing in them
 View(COHA.prey) #just lets us see the data
 COHA.prey=COHA.prey[!grepl("na", COHA.prey$Taxa),] #removes the cells with "na" written in them in the "Taxa" column only
