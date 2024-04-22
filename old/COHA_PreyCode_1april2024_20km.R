@@ -321,13 +321,15 @@ for(i in 1:50){
   list1[[i]] <- RandomPreySample
 }
 
-plot(-1,-1, ylim = c(0, 0.005), xlim = c(0,500), xlab = "Prey Weight", ylab = "Probability")
+plot(-1,-1, ylim = c(0, 0.005), xlim = c(0,500), xlab = "Prey Weight", ylab = "Probability",
+     main = "Cooper's Hawk Prey Weights")
 
 for(i in 1:length(list1)){
   RandomPreySample_i <- list1[[i]]
   c1 <- subset(RandomPreySample_i, weight < 500) # object "c1" is just for the histogram on the next line
   lines(density(c1$weight), lwd = 1, col = "black") # density plot line
 }
+rug(c1$weigh, col = "red")
 
 # run a single line with a rug at the bottom
 plot(-1,-1, ylim = c(0, 0.005), xlim = c(0,500), xlab = "Prey Weight", ylab = "Probability")
