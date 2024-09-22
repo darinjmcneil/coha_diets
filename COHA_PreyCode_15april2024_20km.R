@@ -56,9 +56,9 @@ height <- 10000
 # create blank list to hold resulting data.frames
 list1 <- list()
 
-for(i in 1:50){ # for each replicate (doing 50 runs through the data)
+for(i in 1:10){ # for each replicate (doing 50 runs through the data)
   #######################################################################
-  # i = 33
+  # i = 34
   
   #######################################################################
   # assign random species IDs to small/medium/large avian prey items in random fashion
@@ -218,7 +218,7 @@ for(i in 1:length(list1)){
   c1 <- subset(RandomPreySample_i, weight < 500) # object "c1" is just for the histogram on the next line
   lines(density(c1$weight), lwd = 1, col = "black") # density plot line
 }
-rug(c1$weigh, col = "red")
+rug(c1$weight, col = "red")
 
 # run a single line with a rug at the bottom
 plot(-1,-1, ylim = c(0, 0.005), xlim = c(0,500), xlab = "Prey Weight", ylab = "Probability")
@@ -226,3 +226,90 @@ RandomPreySample_i <- list1[[1]]
 c1 <- subset(RandomPreySample_i, weight < 500) # object "c1" is just for the histogram on the next line
 lines(density(c1$weight), lwd = 2, col = "black") # density plot line
 rug(c1$weigh)
+
+############################################ Proportions of prey
+
+list2 <- list()
+
+for(i in 1:length(list1)){
+  # i = 1
+  list_i <- list1[[i]] # isolate list i
+  
+  # remove the "random" assignments
+  list_i <- list_i[!grepl("r_", list_i$prey_desc),] # remove unidentified prey items
+  
+  # remove the prey items that were not identified to species (they contain a slash "/")
+  list_i <- list_i[!grepl("/", list_i$prey_desc),]
+  
+  # take a 50% subset
+  list_i$use <- rbinom(n = nrow(list_i), size = 1, prob = 0.5) # assign random 50% subset
+  list_i <- subset(list_i, use == 1)# take 50% subset
+  
+  # blank data.frame to hold list_i's proportions
+  list_i_prey_props <- data.frame("species" = 0, "prop" = 0)
+  
+  # run through each prey item and add it to blank data.frame()
+  for(s in 1:length(unique(list_i$prey_desc))){
+    list_i_prey_s <- subset(list_i, prey_desc == unique(list_i$prey_desc)[s]) # isolate prey s
+    prop_s <- 100 * nrow(list_i_prey_s)/nrow(list_i) # proportion = 100 x prey_s / all prey
+    prop_s <- round(prop_s, 2) # round to 2 decimal places
+    newrow <- c(unique(list_i$prey_desc)[s], prop_s)
+    list_i_prey_props <- rbind(list_i_prey_props, newrow)
+    list_i_prey_props$prop <- as.numeric(list_i_prey_props$prop)
+  }
+  
+  list_i_prey_props <- list_i_prey_props[2:nrow(list_i_prey_props),] # delete blank first row
+  list2[[i]] <- list_i_prey_props
+}
+
+############################################ Calculate means and 95% CIs for proportions
+
+Forsplist <- coha_all2
+
+# remove the "random" assignments and unidentified birds and slashes
+Forsplist <- Forsplist[!grepl("/", Forsplist$prey_desc),] # remove unidentified prey items
+Forsplist <- Forsplist[!grepl("avian", Forsplist$prey_desc),] # remove unidentified avian
+
+# replace a few vague ones
+Forsplist$prey_desc[grepl("norway rat", Forsplist$prey_desc)] <- "rat sp."
+Forsplist$prey_desc[grepl("sylvilagus sp.", Forsplist$prey_desc)] <- "leporid sp." # sylvilagus becomes leporidae
+Forsplist$prey_desc[grepl("eastern cottontail", Forsplist$prey_desc)] <- "leporid sp." # cottontail becomes leporidae
+Forsplist$prey_desc[grepl("black-tailed jackrabbit", Forsplist$prey_desc)] <- "leporid sp." # cottontail becomes leporidae
+
+splist <- unique(Forsplist$prey_desc)
+
+PropData <- data.frame("species" = 0, "meanProp" = 0, "sdProp" = 0)
+
+for(sp in 1:length(unique(Forsplist$prey_desc))){ # for each prey item...
+  
+  #sp = 9
+  unique(Forsplist$prey_desc)[sp] # sp 53 is Eurasian Collared-dove
+  
+  sp_vals <- c()
+  
+  for(l in 1:length(list2)){ # obtain all of the proportions from list2
+    prop_l <- subset(list2[[l]], species == unique(Forsplist$prey_desc)[sp]) 
+    prop_l <- as.numeric(prop_l[2])
+    sp_vals <- c(sp_vals, prop_l)
+  }
+  
+  # then calculate the mean and SD for each
+  speciesName = unique(Forsplist$prey_desc)[sp]
+  meanProportion = round(mean(sp_vals, na.rm = T),2)
+  sdProportion = round(sd(sp_vals, na.rm = T),2)
+  
+  # add them to data.frame()
+  PropData <- rbind(PropData, c(speciesName, meanProportion, sdProportion))
+}
+
+PropData <- PropData[2:nrow(PropData),] # remove blank row
+PropData <- PropData[complete.cases(PropData),] # remove NAs
+PropData$meanProp <- as.numeric(PropData$meanProp) # make means numeric
+PropData$sdProp <- as.numeric(PropData$sdProp) # make sds numeric
+PropData <- PropData[order(PropData$meanProp, decreasing = TRUE),]
+PropData$seProp <- PropData$sdProp/sqrt(length(list2))
+PropData$ciProp <- 1.96 * PropData$seProp
+PropData[,4:5] <- round(PropData[,4:5], 2)
+PropData
+
+
