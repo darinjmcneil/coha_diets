@@ -56,7 +56,7 @@ height <- 10000
 # create blank list to hold resulting data.frames
 list1 <- list()
 
-for(i in 1:10){ # for each replicate (doing 50 runs through the data)
+for(i in 1:50){ # for each replicate (doing 50 runs through the data)
   #######################################################################
   # i = 34
   
