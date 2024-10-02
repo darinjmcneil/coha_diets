@@ -1,4 +1,4 @@
-library(sp); library(raster); library(rgeos); library(geosphere)
+library(sp); library(raster); library(geosphere)
 library(sf); library(ggplot2); library(tictoc)
 
 # read in files
