@@ -4,6 +4,8 @@ library(sp)
 library(terra)
 library(eSDM)
 
+# dj is cool
+
 ###############
 #bring in data and get it usable
 
