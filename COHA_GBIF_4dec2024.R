@@ -3,16 +3,17 @@ library(sf)
 library(sp)
 library(terra)
 library(eSDM)
+library(dplyr)
 
 # dj is cool
+#COHAcoords = subset(COHA, select = latitude:longitude) #isolating lat and long
 
 ###############
 #bring in data and get it usable
 
-COHA = read.csv("C:/Users/wgibs/OneDrive/Desktop/COHA_SSHA Diet/cohaprey.csv")
-COHAcoords = subset(COHA, select = latitude:longitude)
-COHAprey = subset(COHA, select = prey_desc:prey_class)
-COHA = cbind(COHAcoords, COHAprey)
+COHA = read.csv("./cohaprey.csv") #read in all 1628 prey observations
+COHA = dplyr::select(COHA, -X, -observed_on, -url, -prey_Y.N, -notes, -observer,
+                     -min_weight, -max_weight, -avian_size_class)
 
 #remove s, m, l avian
 COHA <- subset(COHA, prey_desc != "small avian")
@@ -45,6 +46,9 @@ mammalpoly = pts2poly_centroids(COHAmammals, 25, crs = crs(us1))
 herppoly = pts2poly_centroids(COHAherp, 25, crs = crs(us1))
 
 #making that polygon into WKT
+#generate planar projection for points (unsure which one on continental scale- 
+  # make a spatial object with lat/long, reproject and get planar coords and isolate, cbind onto coha dataframe)
+
 
 ###############
 #creating keys
