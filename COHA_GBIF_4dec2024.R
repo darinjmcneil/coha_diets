@@ -6,49 +6,59 @@ library(eSDM)
 library(dplyr)
 
 # dj is cool
-#COHAcoords = subset(COHA, select = latitude:longitude) #isolating lat and long
+#cohacoords = subset(coha, select = latitude:longitude) #isolating lat and long
 
 ###############
 #bring in data and get it usable
 
-COHA = read.csv("./cohaprey.csv") #read in all 1628 prey observations
-COHA = dplyr::select(COHA, -X, -observed_on, -url, -prey_Y.N, -notes, -observer,
+coha = read.csv("./cohaprey.csv") #read in all 1628 prey observations
+coha = dplyr::select(coha, -X, -observed_on, -url, -prey_Y.N, -notes, -observer,
                      -min_weight, -max_weight, -avian_size_class)
 
-#remove s, m, l avian
-COHA <- subset(COHA, prey_desc != "small avian")
-COHA <- subset(COHA, prey_desc != "medium avian")
-COHA <- subset(COHA, prey_desc != "large avian")
+#make coha coordinates named x and y for later ease
+names(coha)[names(coha) == "latitude"] = "y"
+names(coha)[names(coha) == "longitude"] = "x"
 
-COHAaves = subset(COHA, prey_class = "ave")
-COHAmammals = subset(COHA, prey_class = "mammalia")
-COHAherp = subset(COHA, prey_class = "sauria")
+#generate planar projection for points (unsure which one on continental scale- 
+# make a spatial object with lat/long, reproject and get planar coords and isolate, cbind onto coha dataframe)
+
+cohacoords = dplyr::select(coha, x, y) #subset geometries
+cplanar = st_as_sf(cohacoords, coords = c("x", "y"))
+cplanar = st_set_crs(cplanar, crs(us1))
+cbind(coha, cplanar)
+
+#remove s, m, l avian
+coha = subset(coha, prey_desc != "small avian")
+coha = subset(coha, prey_desc != "medium avian")
+coha = subset(coha, prey_desc != "large avian")
+
+#subset prey classes
+cohaaves = subset(coha, prey_class = "aves")
+cohamammals = subset(coha, prey_class = "mammalia")
+cohaherp = subset(coha, prey_class = "sauria")
 
 #US map
 #https://hub.arcgis.com/datasets/1b02c87f62d24508970dc1a6df80c98e/explore?location=38.753686%2C-99.481986%2C3.89
-us <- terra::vect("C:/Users/wgibs/OneDrive/Desktop/COHA_SSHA Diet/States_shapefile.shp")
-us <- us[us$State_Code != 'AK' & us$State_Code != 'HI',] # remove AK and HI
+us = terra::vect("C:/Users/wgibs/OneDrive/Desktop/coha_SSHA Diet/States_shapefile.shp")
+us = us[us$State_Code != 'AK' & us$State_Code != 'HI',] # remove AK and HI
 plot(us)
 crs(us)
 
 # reproject in lambert conic projection; makes creating grids (in km) easier
-lam <- "+proj=lcc +lon_0=-90 +lat_1=33 +lat_2=45"
-us1 <- terra::project(us, crs(lam))
+lam = "+proj=lcc +lon_0=-90 +lat_1=33 +lat_2=45"
+us1 = terra::project(us, crs(lam))
 plot(us1, axes = T)
 
 ################
 #creating a polygon around prey points
 
-birdpoly = pts2poly_centroids(COHAaves, 25, crs = crs(us1))
+birdpoly = pts2poly_centroids(cohaaves, 25, crs = crs(us1))
 birdpoly = st_as_sf(birdpoly$geometry)
 birdpoly = as_Spatial(birdpoly)
-mammalpoly = pts2poly_centroids(COHAmammals, 25, crs = crs(us1))
-herppoly = pts2poly_centroids(COHAherp, 25, crs = crs(us1))
+mammalpoly = pts2poly_centroids(cohamammals, 25, crs = crs(us1))
+herppoly = pts2poly_centroids(cohaherp, 25, crs = crs(us1))
 
 #making that polygon into WKT
-#generate planar projection for points (unsure which one on continental scale- 
-  # make a spatial object with lat/long, reproject and get planar coords and isolate, cbind onto coha dataframe)
-
 
 ###############
 #creating keys
