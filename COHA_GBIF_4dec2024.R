@@ -25,7 +25,7 @@ names(coha)[names(coha) == "longitude"] = "x"
 cohacoords = dplyr::select(coha, x, y) #subset geometries
 cplanar = st_as_sf(cohacoords, coords = c("x", "y"))
 cplanar = st_set_crs(cplanar, crs(us1))
-cbind(coha, cplanar)
+coha = cbind(coha, cplanar)
 
 #remove s, m, l avian
 coha = subset(coha, prey_desc != "small avian")
@@ -52,11 +52,14 @@ plot(us1, axes = T)
 ################
 #creating a polygon around prey points
 
-birdpoly = pts2poly_centroids(cohaaves, 25, crs = crs(us1))
-birdpoly = st_as_sf(birdpoly$geometry)
-birdpoly = as_Spatial(birdpoly)
-mammalpoly = pts2poly_centroids(cohamammals, 25, crs = crs(us1))
-herppoly = pts2poly_centroids(cohaherp, 25, crs = crs(us1))
+coha = vect(coha$geometry)
+birdpoly = terra::buffer(coha, .001)
+
+#birdpoly = pts2poly_centroids(cohacoords, .25)
+#birdpoly = st_as_sf(birdpoly$geometry)
+#birdpoly = as_Spatial(birdpoly)
+#mammalpoly = pts2poly_centroids(cohamammals, 25, crs = crs(us1))
+#herppoly = pts2poly_centroids(cohaherp, 25, crs = crs(us1))
 
 #making that polygon into WKT
 
@@ -97,4 +100,4 @@ for(i in 1:50) {
 
 occ_search(taxonKey = birdkey,
            datasetKey = "50c9509d-22c7-4a22-a47d-8c48425ef4a7",
-           hasCoordinate = T, geometry = samp)
+           hasCoordinate = T, geometry = cplanar)
