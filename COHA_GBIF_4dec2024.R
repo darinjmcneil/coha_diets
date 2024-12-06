@@ -19,14 +19,6 @@ coha = dplyr::select(coha, -X, -observed_on, -url, -prey_Y.N, -notes, -observer,
 names(coha)[names(coha) == "latitude"] = "y"
 names(coha)[names(coha) == "longitude"] = "x"
 
-#generate planar projection for points (unsure which one on continental scale- 
-# make a spatial object with lat/long, reproject and get planar coords and isolate, cbind onto coha dataframe)
-
-cohacoords = dplyr::select(coha, x, y) #subset geometries
-cplanar = st_as_sf(cohacoords, coords = c("x", "y"))
-cplanar = st_set_crs(cplanar, crs(us1))
-coha = cbind(coha, cplanar)
-
 #remove s, m, l avian
 coha = subset(coha, prey_desc != "small avian")
 coha = subset(coha, prey_desc != "medium avian")
@@ -50,16 +42,63 @@ us1 = terra::project(us, crs(lam))
 plot(us1, axes = T)
 
 ################
+#generate planar projection for points (unsure which one on continental scale- 
+# make a spatial object with lat/long, reproject and get planar coords and isolate, cbind onto coha dataframe)
+
+cohacoords = dplyr::select(coha, x, y) #subset coordinates
+
+# convert fake EWPW Locations to spatial data
+Locs <- SpatialPoints(coords = data.frame("x" = cohacoords$x, "y" = cohacoords$y)) # create spatial object
+Locs = terra::vect(Locs)
+terra::crs(Locs) <- CRS("+init=epsg:4269") # define CRS as NAD83
+Locs = terra::project(Locs, crs(us1))
+
+#plotting 1 point
+
+#for(i in 1:nrow(Locs)){
+#  plot(us1)
+#  plot(Locs[i])
+#  buff1 = terra::buffer(Locs[i], 100000)
+#}
+
+
+plot(us1)
+plot(Locs[100], add = T)
+buff1 = terra::buffer(Locs[100], 100000)
+wkt = as.character(buff1)
+class(wkt)
+
+as.data.frame(buff1)
+
+
+
+occ_search(taxonKey = 212,
+           datasetKey = "50c9509d-22c7-4a22-a47d-8c48425ef4a7",
+           hasCoordinate = T, decimalLongitude = coha$x[100], decimalLatitude = coha$y[100],
+           distanceFromCentroidInMeters = "0, 100000")
+
+occ_data(taxonKey = 212,
+           datasetKey = "50c9509d-22c7-4a22-a47d-8c48425ef4a7",
+           hasCoordinate = T, country = "US")
+
+occ_download(pred("taxonKey", 212), pred("country", "US"), 
+             pred("datasetKey", "50c9509d-22c7-4a22-a47d-8c48425ef4a7"),
+             format = "DWCA", user = "wgibsonky", pwd = "Wjg742611!", 
+             email = "wgibsonky@gmail.com")
+
+#download full US dataset
+#trim all the extra columns and everything- just have spp inat record and latlong
+#turn them into a spatial object and set it aside
+#take cCOHA record 100 and buffer by 25km then clip bird dataframe by just COHA buffer
+
+
 #creating a polygon around prey points
 
-coha = vect(coha$geometry)
-birdpoly = terra::buffer(coha, .001)
-
-#birdpoly = pts2poly_centroids(cohacoords, .25)
-#birdpoly = st_as_sf(birdpoly$geometry)
-#birdpoly = as_Spatial(birdpoly)
-#mammalpoly = pts2poly_centroids(cohamammals, 25, crs = crs(us1))
-#herppoly = pts2poly_centroids(cohaherp, 25, crs = crs(us1))
+birdpoly = pts2poly_centroids(Locs, 100)
+birdpoly = st_as_sf(birdpoly$geometry)
+birdpoly = as_Spatial(birdpoly)
+mammalpoly = pts2poly_centroids(cohamammals, 25, crs = crs(us1))
+herppoly = pts2poly_centroids(cohaherp, 25, crs = crs(us1))
 
 #making that polygon into WKT
 
