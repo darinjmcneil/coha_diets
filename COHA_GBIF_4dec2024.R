@@ -8,23 +8,60 @@ library(utils)
 library(dwctaxon)
 library(readr)
 library(tibble)
+library(tidyr)
 
-# dj is cool
 #cohacoords = subset(coha, select = latitude:longitude) #isolating lat and long
 
-###############
-#bring in data and get it usable
+#################
+##DwCA DOIs
 
-coha = read.csv("./cohaprey.csv") #read in all 1628 prey observations
+#aves: 10.15468/dl.ucn73z
+#reptiles: 10.15468/dl.j2k7yz
+#mammals: 10.15468/dl.ewaavu
+
+##################
+##bring in data
+
+#birds
+#occ_download(pred("taxonKey", 212), pred("country", "US"), 
+#             pred("datasetKey", "50c9509d-22c7-4a22-a47d-8c48425ef4a7"),
+#             format = "DWCA", user = "wgibsonky", pwd = "Wjg742611!", 
+#             email = "wgibsonky@gmail.com")
+
+#mammals
+#occ_download(pred("taxonKey", 359), pred("country", "US"), 
+#             pred("datasetKey", "50c9509d-22c7-4a22-a47d-8c48425ef4a7"),
+#             format = "DWCA", user = "wgibsonky", pwd = "Wjg742611!", 
+#             email = "wgibsonky@gmail.com")
+
+#reptiles (squamata)
+#occ_download(pred("taxonKey", 11592253), pred("country", "US"), 
+#             pred("datasetKey", "50c9509d-22c7-4a22-a47d-8c48425ef4a7"),
+#             format = "DWCA", user = "wgibsonky", pwd = "Wjg742611!", 
+#             email = "wgibsonky@gmail.com")
+
+
+#read in all 1628 prey observations
+coha = read.csv("./cohaprey.csv")
+
+#bringing in iNat data
+
+#data = read_tsv("C:/Users/wgibs/OneDrive/Desktop/COHA_SSHA Diet/coha_diets/dwcabird/occurrence.txt")
+#data = read_tsv("C:/Users/wgibs/OneDrive/Desktop/COHA_SSHA Diet/coha_diets/dwcarept/occurrence.txt")
+#data = read_tsv("C:/Users/wgibs/OneDrive/Desktop/COHA_SSHA Diet/coha_diets/dwcamamm/occurrence.txt")
+
+#data = dplyr::select(data, species, decimalLatitude, decimalLongitude)
+
+allaves = data.frame(read.csv("C:/Users/wgibs/OneDrive/Desktop/COHA_SSHA Diet/coha_diets/allaves.csv"))
+allrept = data.frame(read.csv("C:/Users/wgibs/OneDrive/Desktop/COHA_SSHA Diet/coha_diets/allrept.csv"))
+allmamm = data.frame(read.csv("C:/Users/wgibs/OneDrive/Desktop/COHA_SSHA Diet/coha_diets/allmamm.csv"))
+
+###################
+##data processing
+
+#remove unneeded rows in coha
 coha = dplyr::select(coha, -X, -observed_on, -url, -prey_Y.N, -notes, -observer,
                      -min_weight, -max_weight, -avian_size_class)
-
-#bringing in iNat dwca
-
-#data = read_tsv("C:/Users/wgibs/OneDrive/Desktop/COHA_SSHA Diet/coha_diets/dwcazip/occurrence.txt")
-allaves = read.csv("C:/Users/wgibs/OneDrive/Desktop/COHA_SSHA Diet/coha_diets/allaves.csv")
-
-terra::rast(allaves)
 
 #make coha coordinates named x and y for later ease
 names(coha)[names(coha) == "latitude"] = "y"
@@ -40,6 +77,12 @@ cohaaves = subset(coha, prey_class = "aves")
 cohamammals = subset(coha, prey_class = "mammalia")
 cohaherp = subset(coha, prey_class = "sauria")
 
+#remove nas in inat data
+allaves = tidyr::drop_na(allaves)
+allrept = tidyr::drop_na(allrept)
+allmamm = tidyr::drop_na(allmamm)
+
+###################
 #US map
 #https://hub.arcgis.com/datasets/1b02c87f62d24508970dc1a6df80c98e/explore?location=38.753686%2C-99.481986%2C3.89
 us = terra::vect("C:/Users/wgibs/OneDrive/Desktop/coha_SSHA Diet/States_shapefile.shp")
@@ -53,16 +96,32 @@ us1 = terra::project(us, crs(lam))
 plot(us1, axes = T)
 
 ################
-#generate planar projection for points (unsure which one on continental scale- 
-# make a spatial object with lat/long, reproject and get planar coords and isolate, cbind onto coha dataframe)
+#generate planar projection for points
 
 cohacoords = dplyr::select(coha, x, y) #subset coordinates
 
-# convert fake EWPW Locations to spatial data
 Locs <- SpatialPoints(coords = data.frame("x" = cohacoords$x, "y" = cohacoords$y)) # create spatial object
 Locs = terra::vect(Locs)
 terra::crs(Locs) <- CRS("+init=epsg:4269") # define CRS as NAD83
 Locs = terra::project(Locs, crs(us1))
+
+#generate spatial objects for iNat data
+
+birdpt <- SpatialPoints(coords = data.frame("x" = allaves$decimalLongitude, "y" = allaves$decimalLatitude)) # create spatial object
+birdpt = terra::vect(birdpt)
+terra::crs(birdpt) <- CRS("+init=epsg:4269") # define CRS as NAD83
+birdpt = terra::project(birdpt, crs(us1))
+
+reptpt <- SpatialPoints(coords = data.frame("x" = allaves$decimalLongitude, "y" = allaves$decimalLatitude)) # create spatial object
+reptpt = terra::vect(reptpt)
+terra::crs(reptpt) <- CRS("+init=epsg:4269") # define CRS as NAD83
+reptpt = terra::project(reptpt, crs(us1))
+
+mammpt <- SpatialPoints(coords = data.frame("x" = allaves$decimalLongitude, "y" = allaves$decimalLatitude)) # create spatial object
+mammpt = terra::vect(mammpt)
+terra::crs(mammpt) <- CRS("+init=epsg:4269") # define CRS as NAD83
+mammpt = terra::project(mammpt, crs(us1))
+
 
 #plotting 1 point
 
@@ -78,24 +137,10 @@ plot(Locs[100], add = T)
 buff1 = terra::buffer(Locs[100], 100000)
 wkt = as.character(buff1)
 class(wkt)
+plot(buff1, add = T)
 
 as.data.frame(buff1)
 
-
-
-occ_search(taxonKey = 212,
-           datasetKey = "50c9509d-22c7-4a22-a47d-8c48425ef4a7",
-           hasCoordinate = T, decimalLongitude = coha$x[100], decimalLatitude = coha$y[100],
-           distanceFromCentroidInMeters = "0, 100000")
-
-occ_data(taxonKey = 212,
-           datasetKey = "50c9509d-22c7-4a22-a47d-8c48425ef4a7",
-           hasCoordinate = T, country = "US")
-
-occ_download(pred("taxonKey", 212), pred("country", "US"), 
-             pred("datasetKey", "50c9509d-22c7-4a22-a47d-8c48425ef4a7"),
-             format = "SPECIES_LIST", user = "wgibsonky", pwd = "Wjg742611!", 
-             email = "wgibsonky@gmail.com")
 
 #download full US dataset
 #trim all the extra columns and everything- just have spp inat record and latlong
