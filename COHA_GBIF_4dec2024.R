@@ -141,11 +141,30 @@ plot(buff1, add = T)
 
 as.data.frame(buff1)
 
+#creating buffer and randomly selecting one bird within buffer
+birdselect = data.frame(row.names = "species", "latitude", "longitude")
+
+for(i in 1:5){
+  buff1 = terra::buffer(Locs[i], 250000)
+  wkt = as.character(buff1)
+  plot(buff1, add = T)
+  birdclip = terra::crop(birdpt, buff1)
+  plot(birdclip, add = T)
+  randbird = sample(birdclip, 1)
+  plot(randbird, add = T, col = "red")
+}
+
+rbind(randbird, birdselect)
+
+Locs <- SpatialPoints(coords = data.frame("x" = cohacoords$x, "y" = cohacoords$y)) # create spatial object
+Locs = terra::vect(Locs)
+terra::crs(Locs) <- CRS("+init=epsg:4269") # define CRS as NAD83
+Locs = terra::project(Locs, crs(us1))
 
 #download full US dataset
 #trim all the extra columns and everything- just have spp inat record and latlong
 #turn them into a spatial object and set it aside
-#take cCOHA record 100 and buffer by 25km then clip bird dataframe by just COHA buffer
+#take COHA record 100 and buffer by 25km then clip bird dataframe by just COHA buffer
 
 
 #creating a polygon around prey points
