@@ -4,6 +4,10 @@ library(sp)
 library(terra)
 library(eSDM)
 library(dplyr)
+library(utils)
+library(dwctaxon)
+library(readr)
+library(tibble)
 
 # dj is cool
 #cohacoords = subset(coha, select = latitude:longitude) #isolating lat and long
@@ -14,6 +18,13 @@ library(dplyr)
 coha = read.csv("./cohaprey.csv") #read in all 1628 prey observations
 coha = dplyr::select(coha, -X, -observed_on, -url, -prey_Y.N, -notes, -observer,
                      -min_weight, -max_weight, -avian_size_class)
+
+#bringing in iNat dwca
+
+#data = read_tsv("C:/Users/wgibs/OneDrive/Desktop/COHA_SSHA Diet/coha_diets/dwcazip/occurrence.txt")
+allaves = read.csv("C:/Users/wgibs/OneDrive/Desktop/COHA_SSHA Diet/coha_diets/allaves.csv")
+
+terra::rast(allaves)
 
 #make coha coordinates named x and y for later ease
 names(coha)[names(coha) == "latitude"] = "y"
@@ -83,7 +94,7 @@ occ_data(taxonKey = 212,
 
 occ_download(pred("taxonKey", 212), pred("country", "US"), 
              pred("datasetKey", "50c9509d-22c7-4a22-a47d-8c48425ef4a7"),
-             format = "DWCA", user = "wgibsonky", pwd = "Wjg742611!", 
+             format = "SPECIES_LIST", user = "wgibsonky", pwd = "Wjg742611!", 
              email = "wgibsonky@gmail.com")
 
 #download full US dataset
