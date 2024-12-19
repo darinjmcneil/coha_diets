@@ -9,6 +9,8 @@ library(dwctaxon)
 library(readr)
 library(tibble)
 library(tidyr)
+library(maps)
+
 
 #cohacoords = subset(coha, select = latitude:longitude) #isolating lat and long
 
@@ -86,21 +88,27 @@ allmamm = tidyr::drop_na(allmamm)
 #US map
 #https://hub.arcgis.com/datasets/1b02c87f62d24508970dc1a6df80c98e/explore?location=38.753686%2C-99.481986%2C3.89
 us = terra::vect("C:/Users/wgibs/OneDrive/Desktop/coha_SSHA Diet/States_shapefile.shp")
+plot(us)
 us = us[us$State_Code != 'AK' & us$State_Code != 'HI',] # remove AK and HI
 plot(us)
 crs(us)
+
+
 
 # reproject in lambert conic projection; makes creating grids (in km) easier
 lam = "+proj=lcc +lon_0=-90 +lat_1=33 +lat_2=45"
 us1 = terra::project(us, crs(lam))
 plot(us1, axes = T)
 
+
+plot(us[us$State_Code = 'AL', ])
+
 ################
 #generate planar projection for points
 
 cohacoords = dplyr::select(coha, x, y) #subset coordinates
 
-Locs <- SpatialPoints(coords = data.frame("x" = cohacoords$x, "y" = cohacoords$y)) # create spatial object
+Locs = SpatialPoints(coords = data.frame("x" = cohacoords$x, "y" = cohacoords$y)) # create spatial object
 Locs = terra::vect(Locs)
 terra::crs(Locs) <- CRS("+init=epsg:4269") # define CRS as NAD83
 Locs = terra::project(Locs, crs(us1))
@@ -111,26 +119,21 @@ birdpt <- SpatialPoints(coords = data.frame("x" = allaves$decimalLongitude, "y" 
 birdpt = terra::vect(birdpt)
 terra::crs(birdpt) <- CRS("+init=epsg:4269") # define CRS as NAD83
 birdpt = terra::project(birdpt, crs(us1))
+#birdpt = crop(birdpt, us1)
 
 reptpt <- SpatialPoints(coords = data.frame("x" = allaves$decimalLongitude, "y" = allaves$decimalLatitude)) # create spatial object
 reptpt = terra::vect(reptpt)
 terra::crs(reptpt) <- CRS("+init=epsg:4269") # define CRS as NAD83
 reptpt = terra::project(reptpt, crs(us1))
+#reptpt = crop(reptpt, us1)
 
 mammpt <- SpatialPoints(coords = data.frame("x" = allaves$decimalLongitude, "y" = allaves$decimalLatitude)) # create spatial object
 mammpt = terra::vect(mammpt)
 terra::crs(mammpt) <- CRS("+init=epsg:4269") # define CRS as NAD83
 mammpt = terra::project(mammpt, crs(us1))
-
+#mammpt = crop(mammpt, us1)
 
 #plotting 1 point
-
-#for(i in 1:nrow(Locs)){
-#  plot(us1)
-#  plot(Locs[i])
-#  buff1 = terra::buffer(Locs[i], 100000)
-#}
-
 
 plot(us1)
 plot(Locs[100], add = T)
@@ -139,13 +142,52 @@ wkt = as.character(buff1)
 class(wkt)
 plot(buff1, add = T)
 
-as.data.frame(buff1)
+#as.data.frame(buff1)
 
-#creating buffer and randomly selecting one bird within buffer
+######################
+#cropping to coordinate ranges ranges
+#create overlap
+
+#take gbif table- turn it into spatial object
+#read in each state
+#buffer each state 5km
+#clip gbif by state
+#reconvert gbif into table
+#export it into "state+5gbif" to memory
+
+
+
+#aver = data.frame()
+
+#avery = allaves$decimalLatitude[(allaves$decimalLatitude >= 25 & allaves$decimalLatitude <=50)] #cropping Lat to "region 1" (eastern US)
+#averx = allaves$decimalLongitude[(allaves$decimalLongitude >= -85 & allaves$decimalLongitude <= -75)]#cropping Long to "region 1" (eastern US)
+
+#aver = rbind(aver, averx) #binding new coords into empty dataframe. For some reason row and column get switched?
+#aver = rbind(aver, avery)
+
+#aver1 = data.frame(t(aver[-1])) #converting to a new dataframe, with rows and cloumns correct
+#colnames(aver1) = c("decimalLatitude", "decimalLongitude")
+
+#aver1$row = seq.int(nrow(aver1)) #adding row names to new dataframe
+#rownames(aver1) = aver1[,3]
+#aver1 <- aver1[,-3]
+
+#xaver1 = merge(aver1, allaves)
+
+#aver1pt = SpatialPoints(coords = data.frame("x" = aver1$decimalLongitude, "y" = aver1$decimalLatitude)) # create spatial object
+#aver1pt = terra::vect(aver1pt)
+#terra::crs(aver1pt) <- CRS("+init=epsg:4269") # define CRS as NAD83
+#aver1pt = terra::project(aver1pt, crs(us1))
+
+###########################
+#random selection
+#birds
+plot(us1)
 birdselect = data.frame(row.names = "species", "latitude", "longitude")
 
+
 for(i in 1:5){
-  buff1 = terra::buffer(Locs[i], 250000)
+  buff1 = terra::buffer(Locs[i], 10000)
   wkt = as.character(buff1)
   plot(buff1, add = T)
   birdclip = terra::crop(birdpt, buff1)
@@ -156,11 +198,32 @@ for(i in 1:5){
 
 rbind(randbird, birdselect)
 
-Locs <- SpatialPoints(coords = data.frame("x" = cohacoords$x, "y" = cohacoords$y)) # create spatial object
-Locs = terra::vect(Locs)
-terra::crs(Locs) <- CRS("+init=epsg:4269") # define CRS as NAD83
-Locs = terra::project(Locs, crs(us1))
+#reptiles
+plot(us1)
+reptselect = data.frame(row.names = "species", "latitude", "longitude")
+for(i in 1:5){
+  buff1 = terra::buffer(Locs[i], 50000)
+  wkt = as.character(buff1)
+  plot(buff1, add = T)
+  reptclip = terra::crop(reptpt, buff1)
+  plot(reptclip, add = T)
+  randrept = sample(reptclip, 1)
+  plot(randrept, add = T, col = "red")
+}
 
+#mammals
+plot(us1)
+mammselect = data.frame(row.names = "species", "latitude", "longitude")
+for(i in 1:5){
+  buff1 = terra::buffer(Locs[i], 50000)
+  wkt = as.character(buff1)
+  plot(buff1, add = T)
+  mammclip = terra::crop(mammpt, buff1)
+  plot(mammclip, add = T)
+  randmamm = sample(mammclip, 1)
+  plot(randmamm, add = T, col = "red")
+}
+###################################
 #download full US dataset
 #trim all the extra columns and everything- just have spp inat record and latlong
 #turn them into a spatial object and set it aside
@@ -169,20 +232,20 @@ Locs = terra::project(Locs, crs(us1))
 
 #creating a polygon around prey points
 
-birdpoly = pts2poly_centroids(Locs, 100)
-birdpoly = st_as_sf(birdpoly$geometry)
-birdpoly = as_Spatial(birdpoly)
-mammalpoly = pts2poly_centroids(cohamammals, 25, crs = crs(us1))
-herppoly = pts2poly_centroids(cohaherp, 25, crs = crs(us1))
+#birdpoly = pts2poly_centroids(Locs, 100)
+#birdpoly = st_as_sf(birdpoly$geometry)
+#birdpoly = as_Spatial(birdpoly)
+#mammalpoly = pts2poly_centroids(cohamammals, 25, crs = crs(us1))
+#herppoly = pts2poly_centroids(cohaherp, 25, crs = crs(us1))
 
 #making that polygon into WKT
 
 ###############
 #creating keys
 #dataset key used beow ("50c9509d-22c7-4a22-a47d-8c48425ef4a7") is key for iNat data
-birdkey = name_backbone(name = "Aves"); birdkey = birdkey$usageKey #key for birds
-mammalkey = name_backbone(name = "Mammalia"); mammalkey = mammalkey$usageKey #key for mammals
-reptilekey = name_backbone(name = "Squamata"); reptilekey = reptilekey$usageKey #key for reptiles
+#birdkey = name_backbone(name = "Aves"); birdkey = birdkey$usageKey #key for birds
+#mammalkey = name_backbone(name = "Mammalia"); mammalkey = mammalkey$usageKey #key for mammals
+#reptilekey = name_backbone(name = "Squamata"); reptilekey = reptilekey$usageKey #key for reptiles
 
 ##############
 #occupancy search for bird record
@@ -196,22 +259,22 @@ reptilekey = name_backbone(name = "Squamata"); reptilekey = reptilekey$usageKey 
 #ex1= ex1$scientificName
 #View(ex1)
 
-samp = spsample(birdpoly[1],n=1,"random")
-samp = st_as_sf(samp)
-st_coordinates(samp)
+#samp = spsample(birdpoly[1],n=1,"random")
+#samp = st_as_sf(samp)
+#st_coordinates(samp)
 
 #plot point, nearest record to that point
 
-for(i in 1:50) {
-  plot(birdpoly[i])
-  samp = spsample(birdpoly[i], n=1, "random")
-  samp = st_as_sf(samp)
-  samp = st_coordinates(samp)
-  samp = bbox(samp)
-  samp = as.data.frame(samp)
-  samp = gbif_bbox2wkt(samp$min[1], samp$min[2], samp$max[1], samp$max[2])
-}
+#for(i in 1:50) {
+#  plot(birdpoly[i])
+#  samp = spsample(birdpoly[i], n=1, "random")
+#  samp = st_as_sf(samp)
+#  samp = st_coordinates(samp)
+#  samp = bbox(samp)
+#  samp = as.data.frame(samp)
+#  samp = gbif_bbox2wkt(samp$min[1], samp$min[2], samp$max[1], samp$max[2])
+#}
 
-occ_search(taxonKey = birdkey,
-           datasetKey = "50c9509d-22c7-4a22-a47d-8c48425ef4a7",
-           hasCoordinate = T, geometry = cplanar)
+#occ_search(taxonKey = birdkey,
+#           datasetKey = "50c9509d-22c7-4a22-a47d-8c48425ef4a7",
+#           hasCoordinate = T, geometry = cplanar)
