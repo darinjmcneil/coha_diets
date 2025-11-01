@@ -56,6 +56,8 @@ height <- 10000
 # create blank list to hold resulting data.frames
 list1 <- list()
 
+tic()
+
 for(i in 1:50){ # for each replicate (doing 50 runs through the data)
   #######################################################################
   # i = 34
@@ -219,6 +221,8 @@ for(i in 1:50){ # for each replicate (doing 50 runs through the data)
   list1[[i]] <- RandomPreySample
 }
 
+toc()
+
 plot(-1,-1, ylim = c(0, 0.005), xlim = c(0,500), xlab = "Prey Weight", ylab = "Probability",
      main = "Cooper's Hawk Prey Weights")
 
@@ -321,4 +325,6 @@ PropData$ciProp <- 1.96 * PropData$seProp
 PropData[,4:5] <- round(PropData[,4:5], 2)
 PropData
 
+#######################
 
+saveRDS(list1, file = "list1.rds")
