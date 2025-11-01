@@ -35,11 +35,16 @@ mammpt = terra::vect(mammpt)
 terra::crs(mammpt) <- CRS("+init=epsg:4269") # define CRS as NAD83
 mammpt = terra::project(mammpt, crs(us1))
 
-#####################
+##########################################
 
 #read in all COHA depredation observations (THINNED records of hawks eating prey)
 list1 <- readRDS("./list1.rds")
+
+
 coha <- list1[[1]]
+
+# subset to BIRDS!!!!!!!!!!!!!!
+coha <- subset(coha, class == "aves"); nrow(coha)
 
 #make coha coordinates named x and y for later ease
 names(coha)[names(coha) == "latitude"] = "y"
@@ -50,69 +55,47 @@ coha <- coha[!grepl("r_", coha$prey_desc), ]
 
 #subset prey classes
 cohaaves <- subset(coha, prey_class = "aves")
-cohamammals <- subset(coha, prey_class = "mammalia")
-cohaherp <- subset(coha, prey_class = "sauria")
-
-#generate planar projection for thinned coha depredation points
-#cohacoords <- dplyr::select(coha, x, y) #subset coordinates
-#Locs <- SpatialPoints(coords = data.frame("x" = cohacoords$x, "y" = cohacoords$y)) # create spatial object
-#Locs <- terra::vect(Locs)
-#terra::crs(Locs) <- CRS("+init=epsg:4269") # define CRS as NAD83
-#Locs <- terra::project(Locs, crs(us1)) # reproject to match map of the US
+#cohamammals <- subset(coha, prey_class = "mammalia")
+#cohaherp <- subset(coha, prey_class = "sauria")
 
 ### better than above chunk?
-library(terra)
 Locs <- vect(coha, geom = c("x", "y"), crs = "EPSG:4269")
 Locs <- project(Locs, crs(us1))
 
-completeprey_df = data.frame("coha_record" = 0,
-                             "coha_date" = 0,
-                             "state" = 0,
-                             "coha_prey" = 0,
-                             "prey_class" = 0,
-                             "rand_prey" = 0,
-                             "rand_prey_record" = 0,
-                             "rand_date" = 0,
-                             "state" = 0,
-                             "NA" = 0)
+completeprey_df = data.frame("coha_record" = 0, "coha_date" = 0, "state" = 0, "coha_prey" = 0,
+                             "prey_class" = 0, "rand_prey" = 0, "rand_prey_record" = 0,
+                             "rand_date" = 0, "state" = 0, "NA" = 0)
 
 for(i in 1:length(us$State_Code)){ #for every state
-  #i = 1
-  
   # isolate the name of state i
   state_i <- us$State_Code[i]
+  
+  # isolate shapefile of state i
+  state_i_sh <- us1[us1@data$State_Code == state_i, ]
+  state_i_sh <- vect(state_i_sh)
   
   # obtain "fat" (buffered) state i boundary and plot it
   str3 <- paste0("st_i_buff <- terra::vect('C:/Users/User/Desktop/COHA_code/StateStuff/statebuff/", state_i, "_buffered.shp')")
   eval(parse(text = str3)) #actually runs str0 as code
   # plot(st_i_buff, add = T, lwd = 3) # plotting turned off for speed purposes
   
-  # crop actual predation records to the "fat" (buffered) state i boundary and plot it
-  st_i_coha <- terra::crop(Locs, us1[i])
+  # MASK actual predation records to the "fat" (buffered) state i boundary and plot it
+  st_i_coha <- terra::mask(Locs, state_i_sh)
   # plot(st_i_coha, add = T, col = "red")  # plotting turned off for speed purposes
-  
-  if (length(st_i_coha) == 0) {
-    next   # skips to the next iteration in a for loop
-  } else {
     
     # obtain the background prey from the "stateiNatbirds" folder for state i
     str2 <- paste0("stateiNatbirds <- terra::vect('C:/Users/User/Desktop/COHA_code/StateStuff/stateiNatbirds/", state_i, "_iNatbirds.shp')")
     eval(parse(text = str2)) #actually runs str0 as code
-    plot(stateiNatbirds, main = paste0(state_i)) # plotting turned off for speed purposes
+    #plot(stateiNatbirds, main = paste0(state_i)) # plotting turned off for speed purposes
     
     # This for() loop runs through all the COHA depredation records for state i 
     # and obtains 1000 prey items for each event  
-    
     for(j in 1:length(st_i_coha)){ #loops through each coha "j" within state "i"
       #j = 1
       #tic()
       buff1 = terra::buffer(st_i_coha[j], 25000)
       plot(buff1, add = T, border = "lightcoral", lwd = 2)
       cohaj_potprey = terra::crop(stateiNatbirds, buff1) #potential prey for coha j
-      
-      if (length(length(cohaj_potprey)) == 0) {
-        next   # skips to the next iteration in a for loop
-      } else {plot(cohaj_potprey, add = T, col = "cyan")}
       
       preysamp_j = sample(cohaj_potprey, 1000, replace = T) #sample of pot prey
       plot(preysamp_j, add = T, col = "purple")
@@ -131,9 +114,7 @@ for(i in 1:length(us$State_Code)){ #for every state
                                      "rand_date", "state.1", "NA.")
       completeprey_df = rbind(completeprey_df, cohaj_randpreyitems)
       print(paste0("state number ", i, " (", state_i, ") ", "bird ", j, " of ", length(st_i_coha), " done"))
-    
       } # ends for() loop that runs through all records within a state
-    } # ends if() statement that checks for records within a state
   }# ends for() loop that runs through each state
 
 #

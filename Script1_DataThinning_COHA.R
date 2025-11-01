@@ -4,7 +4,7 @@ library(sf); library(ggplot2); library(tictoc)
 # read in files
 coha_all <- read.csv("./COHA_RawData.csv") # read in COHA raw data from working directory
 prey_table <- read.csv("./PreyWeightTable_21jan2024.csv") # read in COHA prey weights from working directory
-prey_table <- prey_table[ ,c(1,3,4,6)] # subset to get columns 1, 3, 4, and 6 (prey ID, min/max weight, and avian size class)
+prey_table <- prey_table[ ,c(1,3,4,6:7)] # subset to get columns 1, 3, 4, and 6 (prey ID, min/max weight, and avian size class)
 
 # merge coha_all with prey table to add all weights to identified prey
 coha_all2 <- merge(x = coha_all, y = prey_table, by.x = "prey_desc", by.y = "prey_desc", all.x = TRUE)
@@ -58,7 +58,7 @@ list1 <- list()
 
 tic()
 
-for(i in 1:50){ # for each replicate (doing 50 runs through the data)
+for(i in 1:3){ # for each replicate (doing 50 runs through the data)
   #######################################################################
   # i = 34
   
@@ -223,6 +223,12 @@ for(i in 1:50){ # for each replicate (doing 50 runs through the data)
 
 toc()
 
+#######################
+
+saveRDS(list1, file = "list1.rds")
+
+#######################
+
 plot(-1,-1, ylim = c(0, 0.005), xlim = c(0,500), xlab = "Prey Weight", ylab = "Probability",
      main = "Cooper's Hawk Prey Weights")
 
@@ -325,6 +331,3 @@ PropData$ciProp <- 1.96 * PropData$seProp
 PropData[,4:5] <- round(PropData[,4:5], 2)
 PropData
 
-#######################
-
-saveRDS(list1, file = "list1.rds")
